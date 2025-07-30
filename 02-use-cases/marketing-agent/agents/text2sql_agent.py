@@ -47,7 +47,5 @@ def create_nl2sql_agent(query: str) -> str:
     )
 
     response = agent(query)
-
-    print("\n\n")
     
     return response
