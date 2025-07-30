@@ -19,6 +19,7 @@ import json
 import asyncio
 from dotenv import load_dotenv
 from typing import Optional, List, Dict, Any
+import boto3
 
 from rich.console import Console
 from rich.panel import Panel
@@ -49,6 +50,37 @@ import agents.reflection_agent as reflection_config
 import agents.memory_agent as memory_config
 from constants import BEDROCK_MODEL
 
+# AgentCore
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from bedrock_agentcore_starter_toolkit import Runtime
+from boto3.session import Session
+from IPython.display import Markdown, display
+
+# from utils import create_agentcore_role
+
+# Create IAM Role for AgentCore Runtime
+# agent_name="agentcore_strands"
+# agentcore_iam_role = create_agentcore_role(agent_name=agent_name)
+
+# Configure Runtime deployment
+# boto_session = Session()
+# region = boto_session.region_name
+
+# agentcore_runtime = Runtime()
+
+# agentcore_runtime.configure(
+#     entrypoint="main.py",
+#     execution_role=agentcore_iam_role['Role']['Arn'],
+#     auto_create_ecr=True,
+#     requirements_file="requirements.txt",
+#     region=region,
+#     agent_name=agent_name
+# )
+
+# agentcore_runtime.launch()
+
+app = BedrockAgentCoreApp()
+
 # Ignore deprecation warnings
 import warnings
 
@@ -60,7 +92,6 @@ load_dotenv()
 # --- Global Configurations ---
 console = Console()
 user_id = "marketing_user"
-
 
 class Config:
     """Manages application configuration and environment validation."""
@@ -87,7 +118,6 @@ class Config:
             return False
         return True
 
-
 class Application:
     """Orchestrates the marketing agent system and manages the CLI."""
 
@@ -99,66 +129,66 @@ class Application:
             telemetry.setup_otlp_exporter().setup_console_exporter()
             self.console.print("[bold green]🔍 Telemetry enabled.[/bold green]")
 
-    def print_banner(self):
-        """Prints the application banner."""
-        banner_text = """
-    ╔══════════════════════════════════════════════════════════════╗
-    ║                   Marketing Agent System                     ║
-    ║                                                              ║
-    ║        Powered by Strands, Tavily, and Amazon Bedrock        ║
-    ║                                                              ║
-    ║  🧠 Planner → 🔍 Researcher → 📊 Analyst → 📄 Reporter       ║
-    ╚══════════════════════════════════════════════════════════════╝
-        """
-        self.console.print(
-            Panel(banner_text, title="[bold]Welcome[/bold]", border_style="bright_blue")
-        )
+    # def print_banner(self):
+    #     """Prints the application banner."""
+    #     banner_text = """
+    # ╔══════════════════════════════════════════════════════════════╗
+    # ║                   Marketing Agent System                     ║
+    # ║                                                              ║
+    # ║        Powered by Strands, Tavily, and Amazon Bedrock        ║
+    # ║                                                              ║
+    # ║  🧠 Planner → 🔍 Researcher → 📊 Analyst → 📄 Reporter       ║
+    # ╚══════════════════════════════════════════════════════════════╝
+    #     """
+    #     self.console.print(
+    #         Panel(banner_text, title="[bold]Welcome[/bold]", border_style="bright_blue")
+    #     )
 
-    def show_example_queries(self):
-        """Shows a table of example queries."""
-        table = Table(
-            title="💡 Example Queries", show_header=True, header_style="bold magenta"
-        )
-        table.add_column("Query", style="cyan")
-        table.add_column("Expected Agents", style="yellow")
+    # def show_example_queries(self):
+    #     """Shows a table of example queries."""
+    #     table = Table(
+    #         title="💡 Example Queries", show_header=True, header_style="bold magenta"
+    #     )
+    #     table.add_column("Query", style="cyan")
+    #     table.add_column("Expected Agents", style="yellow")
 
-        examples = [
-            (
-                "Research the latest trends in AI-powered marketing. Include diagram if possible.",
-                "Planner, Researcher, Python (for analysis), Reporter",
-            ),
-            (
-                "Analyze the market share of top cloud providers.",
-                "Planner, Researcher, Python (for analysis), Reporter",
-            ),
-            (
-                "Generate a report on the benefits of serverless computing.",
-                "Planner, Researcher, Reporter",
-            ),
-            (
-                "Analyze John's recent purchases and suggest potential items to advertise to him.",
-                "Planner, Researcher, Python (for analysis), Text2SQL, Reporter",
-            ),
-        ]
+    #     examples = [
+    #         (
+    #             "Research the latest trends in AI-powered marketing. Include diagram if possible.",
+    #             "Planner, Researcher, Python (for analysis), Reporter",
+    #         ),
+    #         (
+    #             "Analyze the market share of top cloud providers.",
+    #             "Planner, Researcher, Python (for analysis), Reporter",
+    #         ),
+    #         (
+    #             "Generate a report on the benefits of serverless computing.",
+    #             "Planner, Researcher, Reporter",
+    #         ),
+    #         (
+    #             "Analyze John's recent purchases and suggest potential items to advertise to him.",
+    #             "Planner, Researcher, Python (for analysis), Text2SQL, Reporter",
+    #         ),
+    #     ]
 
-        for query, agents in examples:
-            table.add_row(query, agents)
+    #     for query, agents in examples:
+    #         table.add_row(query, agents)
 
-        self.console.print(table)
+    #     self.console.print(table)
 
-    def show_memory_info(self):
-        """Shows information about automatic memory management."""
-        info_panel = Panel(
-            "[bold cyan]🧠 Smart Memory Management[/bold cyan]\n\n"
-            "The system now automatically detects and stores:\n"
-            "• Your preferences and likes/dislikes\n"
-            "• Business context and company information\n"
-            "• Goals and objectives you mention\n"
-            "• Important facts and constraints\n\n"
-            "[dim]Just speak naturally - no special keywords needed![/dim]",
-            border_style="blue",
-        )
-        self.console.print(info_panel)
+    # def show_memory_info(self):
+    #     """Shows information about automatic memory management."""
+    #     info_panel = Panel(
+    #         "[bold cyan]🧠 Smart Memory Management[/bold cyan]\n\n"
+    #         "The system now automatically detects and stores:\n"
+    #         "• Your preferences and likes/dislikes\n"
+    #         "• Business context and company information\n"
+    #         "• Goals and objectives you mention\n"
+    #         "• Important facts and constraints\n\n"
+    #         "[dim]Just speak naturally - no special keywords needed![/dim]",
+    #         border_style="blue",
+    #     )
+    #     self.console.print(info_panel)
 
     def run_planner(self, query: str) -> Optional[list]:
         """Runs the planner agent to generate a task list."""
@@ -236,7 +266,6 @@ class Application:
                         f"[bold cyan]⚡ Executing {len(ready_tasks)} tasks in parallel[/bold cyan]"
                     )
                     import concurrent.futures
-                    import threading
 
                     with concurrent.futures.ThreadPoolExecutor(
                         max_workers=min(len(ready_tasks), 3)
@@ -256,7 +285,7 @@ class Application:
                             task = future_to_task[future]
                             try:
                                 result = future.result()
-                                task_results[task["task_id"]] = result
+                                task_results[task["task_id"]] = str(result)
                                 completed_tasks[task["task_id"]] = "COMPLETED"
                                 execution_order.append(task)
                                 remaining_tasks.remove(task)
@@ -281,7 +310,7 @@ class Application:
                         result = self._execute_single_task(
                             task, task_results, user_query, tasks
                         )
-                        task_results[task["task_id"]] = result
+                        task_results[task["task_id"]] = str(result)
                         completed_tasks[task["task_id"]] = "COMPLETED"
                         self.console.print(
                             f"[bold green]✅ Completed:[/bold green] {task['task_id']}"
@@ -401,14 +430,14 @@ class Application:
                 )
                 if dep_task_info:
                     context_parts.append(
-                        f"=== RESULTS FROM: {dep_id.upper()} ({dep_task_info.get('agent', 'unknown')}) ===\n"
-                        f"Task Description: {dep_task_info.get('description', 'N/A')}\n"
-                        f"Results:\n{task_results[dep_id]}\n"
+                        f"=== RESULTS FROM: {str(dep_id.upper())} ({str(dep_task_info.get('agent', 'unknown'))}) ===\n"
+                        f"Task Description: {str(dep_task_info.get('description', 'N/A'))}\n"
+                        f"Results:\n{str(task_results[dep_id])}\n"
                         f"{'='*60}"
                     )
                 else:
                     context_parts.append(
-                        f"Results from {dep_id}:\n{task_results[dep_id]}"
+                        f"Results from {str(dep_id)}:\n{str(task_results[dep_id])}"
                     )
 
         # Create the prompt with better structure
@@ -416,9 +445,9 @@ class Application:
             task_prompt = (
                 f"CONTEXT FROM PREVIOUS TASKS:\n"
                 f"{'='*80}\n"
-                f"\n\n".join(context_parts) + f"\n\n{'='*80}\n"
+                f"\n\n".join(str(context_parts)) + f"\n\n{'='*80}\n"
                 f"YOUR CURRENT TASK:\n"
-                f"{task['description']}\n\n"
+                f"{str(task['description'])}\n\n"
                 f"IMPORTANT: Use the context above to inform your work. "
                 f"Reference specific findings and build upon previous results."
             )
@@ -428,18 +457,25 @@ class Application:
         # Execute the task with additional context for report agent
         if agent_name == "report_agent":
             # For report agent, also pass the original user query for context
-            full_prompt = f"ORIGINAL USER REQUEST: {user_query}\n\n{task_prompt}"
+            full_prompt = f"""ORIGINAL USER REQUEST: {user_query}
+
+{task_prompt}
+
+CRITICAL: You MUST save the final report to: output/reports/marketing_report_{task['task_id']}.md
+Use the file_write tool to create this file. The output directory already exists."""
+            
             result = agent(full_prompt)
+
         else:
             result = agent(task_prompt)
 
-        # Show a preview of the result
-        result_preview = (
-            str(result)[:200] + "..." if len(str(result)) > 200 else str(result)
-        )
-        self.console.print(f"[dim]Result preview: {result_preview}[/dim]")
-
-        return str(result)
+        # Ensure result is always a string, not JSON
+        if isinstance(result, dict):
+            result = str(result.get('content', result))
+        elif hasattr(result, 'content'):
+            result = str(result.content)
+        else:
+            result = str(result)
 
     def _should_run_reflection(self, tasks: list) -> bool:
         """Determine if reflection should be run based on task types."""
@@ -511,111 +547,59 @@ Please evaluate the quality and completeness of these results."""
 
         return prompt
 
-    async def run(self):
-        """Main application loop."""
-        self.print_banner()
-        if not self.config.validate():
-            self.console.print(
-                "\nPlease set the required environment variables and restart."
-            )
-            return
+application = Application()
 
-        self.show_example_queries()
-
-        print("\n")
-
-        self.show_memory_info()
-
-        print(
-            "\nTry mentioning your preferences or company details naturally in conversation!\n"
-        )
-
-        # create mem0 Agent
+@app.entrypoint
+def run(payload):
+    try:
+    # create mem0 Agent
         mem0agent = memory_config.create_memory_agent()
 
-        while True:
-            try:
-                user_query = Prompt.ask(
-                    "\n[bold green]Please enter your request[/bold green]",
-                    console=self.console,
+        user_query = payload.get("prompt", "No prompt entered.")
+
+        # Automatically analyze and store valuable information
+        try:
+            was_stored = memory_config.analyze_and_store_if_valuable(
+                mem0agent, user_query, user_id
+            )
+            if was_stored:
+                print("💾 Stored valuable information from your input")
+        except Exception as e:
+            print(f"⚠️ Memory analysis failed: {e}")
+
+        # Retrieve relevant memories for context
+        try:
+            relevant_memories = memory_config.retrieve_memories(
+                mem0agent, user_query, user_id
+            )
+
+            if relevant_memories:
+                print(f"🧠 Found {len(relevant_memories)} relevant memories")
+                user_query = application.generate_query_from_memories(
+                    user_query, relevant_memories
                 )
+            else:
+                print("No relevant memories found for this query")
+        except Exception as e:
+            print(f"⚠️ Memory retrieval failed: {e}")
+            # Continue without memories if retrieval fails
 
-                if user_query.lower() in ["quit", "exit", "bye"]:
-                    self.console.print("[bold yellow]👋 Goodbye![/bold yellow]")
-                    break
-                if not user_query.strip():
-                    continue
+        print("🔄 Generating plan...")
+        planned_tasks = application.run_planner(user_query)
 
-                # Automatically analyze and store valuable information
-                try:
-                    was_stored = memory_config.analyze_and_store_if_valuable(
-                        mem0agent, user_query, user_id
-                    )
-                    if was_stored:
-                        self.console.print(
-                            "\n[dim]💾 Stored valuable information from your input[/dim]\n"
-                        )
-                except Exception as e:
-                    self.console.print(f"\n[dim]⚠️ Memory analysis failed: {e}[/dim]\n")
-
-                # Retrieve relevant memories for context
-                try:
-                    relevant_memories = memory_config.retrieve_memories(
-                        mem0agent, user_query, user_id
-                    )
-
-                    if relevant_memories:
-                        self.console.print(
-                            f"[bold cyan]🧠 Found {len(relevant_memories)} relevant memories[/bold cyan]"
-                        )
-                        user_query = self.generate_query_from_memories(
-                            user_query, relevant_memories
-                        )
-                    else:
-                        self.console.print(
-                            "[dim]No relevant memories found for this query[/dim]"
-                        )
-                except Exception as e:
-                    self.console.print(
-                        f"[bold yellow]⚠️ Memory retrieval failed: {e}[/bold yellow]"
-                    )
-                    # Continue without memories if retrieval fails
-
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    console=self.console,
-                    transient=True,
-                ) as progress:
-                    task_id = progress.add_task(
-                        "Generating a dynamic plan...", total=None
-                    )
-                    planned_tasks = self.run_planner(user_query)
-                    progress.stop()
-
-                if planned_tasks:
-                    self.console.print(
-                        f"[bold green]✅ Plan Generated:[/bold green] {len(planned_tasks)} tasks."
-                    )
-
-                    with Progress(
-                        SpinnerColumn(),
-                        TextColumn("[progress.description]{task.description}"),
-                        console=self.console,
-                        transient=True,
-                    ) as progress:
-                        progress.add_task("Executing plan...", total=None)
-                        self.execute_plan(planned_tasks, user_query)
-
-            except (KeyboardInterrupt, EOFError):
-                self.console.print("\n[bold yellow]👋 Goodbye![/bold yellow]")
-                break
-            except Exception as e:
-                self.console.print(
-                    f"\n[bold red]❌ An unexpected error occurred: {e}[/bold red]"
-                )
-
-
+        if planned_tasks:
+            print(f"✅ Plan generated: {len(planned_tasks)} tasks")
+            print("🚀 Executing tasks...")
+            application.execute_plan(planned_tasks, user_query)
+            print("✅ Tasks completed")
+            print("Tasks executed successfully. Check output directory for results.") 
+        else:
+            return "No tasks generated for this query."
+    
+    except Exception as e:
+    # Return error response in the same format
+        return f"Error occurred: {str(e)}"
+    
 if __name__ == "__main__":
-    app = Application()
-    asyncio.run(app.run())
+    print("Starting Marketing Agent...")
+    app.run()
