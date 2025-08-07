@@ -55,5 +55,3 @@ Each task dictionary in the list must have the following keys:
   ]
 }
 """
-
-tool_names = [] 

@@ -24,6 +24,11 @@ ENV DOCKER_CONTAINER=1
 
 ENV TAVILY_API_KEY="YOUR TAVILY KEY"
 
+ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
+ENV OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
+
+ENV OTEL_PYTHON_DISABLED_INSTRUMENTATIONS=aws-lambda,boto3sqs,botocore
+
 # Create non-root user
 RUN useradd -m -u 1000 bedrock_agentcore
 USER bedrock_agentcore

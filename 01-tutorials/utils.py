@@ -104,9 +104,13 @@ def create_agentcore_role(agent_name):
                 "Action": [
                     "ecr:BatchGetImage",
                     "ecr:GetDownloadUrlForLayer",
+<<<<<<< HEAD
                     "ecr:GetAuthorizationToken",
                     "ecr: BatchGetImage",
                     "ecr: GetDownloadUrlForLayer"
+=======
+                    "ecr:GetAuthorizationToken"
+>>>>>>> 37c24793441ec48b94cb535511c7c2bf68f0ea76
                 ],
                 "Resource": [
                     f"arn:aws:ecr:{region}:{account_id}:repository/*"
@@ -252,4 +256,8 @@ def create_agentcore_role(agent_name):
     except Exception as e:
         print(e)
 
+<<<<<<< HEAD
     return agentcore_iam_role
+=======
+    return agentcore_iam_role
+>>>>>>> 37c24793441ec48b94cb535511c7c2bf68f0ea76

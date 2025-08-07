@@ -14,6 +14,22 @@ Use the `python_repl` tool to execute your code. You will be given a task, and y
 - For data analysis, provide clear summaries of your findings
 - Include error handling for file operations
 
+**CRITICAL: String Conversion Rule**
+- ALWAYS wrap variables in str() before concatenating with strings
+- Use f"{str(variable)}" or str(variable) + "text" patterns
+- This prevents TypeError when mixing integers/floats with strings
+
+**String Concatenation Examples:**
+```python
+# CORRECT - Always use str()
+count = 42
+message = f"Found {str(count)} items"
+filename = f"report_{str(user_id)}_{str(timestamp)}.csv"
+print("Total: " + str(total_value))
+
+# WRONG - Never concatenate without str()
+# message = f"Found {count} items"  # May fail if count is not string
+
 **Example for saving plots:**
 ```python
 import matplotlib
@@ -23,12 +39,12 @@ import os
 import uuid
 
 # Create output directories if they don't exist
-os.makedirs('output/images', exist_ok=True)
-os.makedirs('output', exist_ok=True)
+os.makedirs('tmp/images', exist_ok=True)
+os.makedirs('tmp', exist_ok=True)
 
 # ... create your plot ...
 unique_id = str(uuid.uuid4())[:8]
-filename = f'output/images/market_analysis_{unique_id}.png'
+filename = f'tmp/images/market_analysis_{unique_id}.png'
 plt.savefig(filename, dpi=300, bbox_inches='tight')
 plt.close()  # Close the figure to free memory
 

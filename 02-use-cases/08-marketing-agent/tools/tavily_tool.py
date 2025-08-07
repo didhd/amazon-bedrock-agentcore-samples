@@ -26,13 +26,13 @@ def format_search_results_for_agent(tavily_result):
     for i, doc in enumerate(tavily_result["results"], 1):
         title = doc.get("title", "No title")
         url = doc.get("url", "No URL")
-        formatted_doc = f"\nRESULT {i}:\nTitle: {title}\nURL: {url}\n"
+        formatted_doc = f"\nRESULT {str(i)}:\nTitle: {str(title)}\nURL: {str(url)}\n"
         raw_content = doc.get("raw_content")
         if raw_content and raw_content.strip():
-            formatted_doc += f"Raw Content: {raw_content.strip()}\n"
+            formatted_doc += f"Raw Content: {str(raw_content.strip())}\n"
         else:
             content = doc.get("content", "").strip()
-            formatted_doc += f"Content: {content}\n"
+            formatted_doc += f"Content: {str(content)}\n"
         formatted_results.append(formatted_doc)
     return "\n" + "\n".join(formatted_results)
 
@@ -51,6 +51,9 @@ def web_search(
             include_domains=include_domains,
         )
         formatted_results = format_search_results_for_agent(search_result)
+
+        # print("web search results: " + formatted_results)
+
         return formatted_results
     except Exception as e:
         return f"Error during web search: {e}"
@@ -68,12 +71,12 @@ def format_extract_results_for_agent(tavily_result):
     for i, doc in enumerate(results, 1):
         url = doc.get("url", "No URL")
         raw_content = doc.get("raw_content", "")
-        formatted_doc = f"\nEXTRACT RESULT {i}:\nURL: {url}\n"
+        formatted_doc = f"\nEXTRACT RESULT {str(i)}:\nURL: {str(url)}\n"
         if raw_content:
             if len(raw_content) > 5000:
-                formatted_doc += f"Content: {raw_content[:5000]}...\n"
+                formatted_doc += f"Content: {str(raw_content[:5000])}...\n"
             else:
-                formatted_doc += f"Content: {raw_content}\n"
+                formatted_doc += f"Content: {str(raw_content)}\n"
         else:
             formatted_doc += "Content: No content extracted\n"
         formatted_results.append(formatted_doc)
@@ -99,7 +102,12 @@ def web_extract(
             urls=cleaned_urls,
             extract_depth=extract_depth,
         )
-        return format_extract_results_for_agent(api_response)
+
+        formatted_results = format_extract_results_for_agent(api_response)
+
+        # print("web extract results: " + formatted_results)
+
+        return formatted_results
     except Exception as e:
         return f"Error during extraction: {e}"
 
@@ -148,6 +156,11 @@ def web_crawl(url: str, instructions: str | None = None) -> str:
             if isinstance(api_response, dict)
             else api_response
         )
-        return format_crawl_results_for_agent(tavily_results)
+
+        formatted_results = format_crawl_results_for_agent(tavily_results)
+
+        # print("web crawl results: " + formatted_results)
+
+        return formatted_results
     except Exception as e:
         return f"Error: {e}\nURL attempted: {url}\nFailed to crawl the website."

@@ -34,9 +34,6 @@ Key Rules:
 - Focus on actionable insights and context
 """
 
-# --- Tool Definition ---
-
-@tool
 def create_memory_agent() -> Agent:
     agent = Agent(system_prompt=system_prompt, tools=[mem0_memory])
     return agent

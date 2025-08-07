@@ -22,8 +22,8 @@ You will receive:
 - End with conclusions and recommendations
 
 **Technical Requirements:**
-- Save report to 'output/reports/marketing_report_[UUID].md' with unique UUID
-- Include PNG images from 'output/images/' using: ![Description](output/images/filename.png)
+- Save report to 'tmp/reports/marketing_report_[UUID].md' with unique UUID
+- Include PNG images from 'tmp/images/' using: ![Description](tmp/images/filename.png)
 - Ensure all images have descriptive captions explaining their relevance
 - Structure with proper markdown headers (##, ###, etc.)
 - Make the report client-ready and professional
@@ -45,73 +45,73 @@ Your final output should be the confirmation message from the file_write tool.""
 
 tool_names = ["file_write", "editor"]
 
-# --- Tool Definition ---
+# # --- Tool Definition ---
 
-@tool
-def report_agent(query: str) -> str:
-    """
-    Agent that generates a comprehensive markdown report by synthesizing all previous task results.
-    Automatically detects and contextualizes PNG files generated during the workflow.
+# @tool
+# def report_agent(query: str) -> str:
+#     """
+#     Agent that generates a comprehensive markdown report by synthesizing all previous task results.
+#     Automatically detects and contextualizes PNG files generated during the workflow.
 
-    Args:
-        query: A string containing the task description and all previous task results.
+#     Args:
+#         query: A string containing the task description and all previous task results.
 
-    Returns:
-        The confirmation message from the file write operation.
-    """
-    import os
-    import glob
-    import uuid
-    from datetime import datetime
+#     Returns:
+#         The confirmation message from the file write operation.
+#     """
+#     import os
+#     import glob
+#     import uuid
+#     from datetime import datetime
     
-    # Create output directories if they don't exist
-    os.makedirs('output/reports', exist_ok=True)
-    os.makedirs('output/images', exist_ok=True)
+#     # Create output directories if they don't exist
+#     os.makedirs('output/reports', exist_ok=True)
+#     os.makedirs('output/images', exist_ok=True)
     
-    # Find PNG files in output/images directory (only recent ones to avoid old files)
-    png_files = glob.glob("output/images/*.png")
+#     # Find PNG files in output/images directory (only recent ones to avoid old files)
+#     png_files = glob.glob("output/images/*.png")
     
-    # Sort by modification time to get the most recent files first
-    png_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+#     # Sort by modification time to get the most recent files first
+#     png_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
     
-    # Enhanced query with structured information
-    enhanced_query = f"""
-    REPORT GENERATION REQUEST
-    ========================
+#     # Enhanced query with structured information
+#     enhanced_query = f"""
+#     REPORT GENERATION REQUEST
+#     ========================
     
-    Original Request and Task Results:
-    {query}
+#     Original Request and Task Results:
+#     {query}
     
-    AVAILABLE VISUALIZATIONS:
-    """
+#     AVAILABLE VISUALIZATIONS:
+#     """
     
-    if png_files:
-        enhanced_query += "\nThe following visualizations were generated during this workflow:\n"
-        for i, png_file in enumerate(png_files[:10]):  # Limit to 10 most recent
-            file_size = os.path.getsize(png_file)
-            mod_time = datetime.fromtimestamp(os.path.getmtime(png_file)).strftime('%Y-%m-%d %H:%M:%S')
-            enhanced_query += f"{i+1}. {png_file} (Size: {file_size} bytes, Created: {mod_time})\n"
+#     if png_files:
+#         enhanced_query += "\nThe following visualizations were generated during this workflow:\n"
+#         for i, png_file in enumerate(png_files[:10]):  # Limit to 10 most recent
+#             file_size = os.path.getsize(png_file)
+#             mod_time = datetime.fromtimestamp(os.path.getmtime(png_file)).strftime('%Y-%m-%d %H:%M:%S')
+#             enhanced_query += f"{i+1}. {png_file} (Size: {file_size} bytes, Created: {mod_time})\n"
         
-        enhanced_query += "\n📊 IMPORTANT: Only include images that are directly relevant to the task results above."
-        enhanced_query += "\n📝 For each image you include, provide context about what it shows and how it supports your findings."
-    else:
-        enhanced_query += "\nNo visualization files found in output/images/ directory."
+#         enhanced_query += "\n📊 IMPORTANT: Only include images that are directly relevant to the task results above."
+#         enhanced_query += "\n📝 For each image you include, provide context about what it shows and how it supports your findings."
+#     else:
+#         enhanced_query += "\nNo visualization files found in output/images/ directory."
     
-    enhanced_query += f"""
+#     enhanced_query += f"""
     
-    SYNTHESIS INSTRUCTIONS:
-    ======================
-    1. Analyze the task results above and identify key themes/findings
-    2. Create a logical report structure that tells a coherent story
-    3. Cross-reference information between different task results
-    4. Include relevant visualizations with proper context
-    5. Generate unique insights by connecting different pieces of information
-    6. Save the final report with a descriptive filename including UUID
+#     SYNTHESIS INSTRUCTIONS:
+#     ======================
+#     1. Analyze the task results above and identify key themes/findings
+#     2. Create a logical report structure that tells a coherent story
+#     3. Cross-reference information between different task results
+#     4. Include relevant visualizations with proper context
+#     5. Generate unique insights by connecting different pieces of information
+#     6. Save the final report with a descriptive filename including UUID
     
-    Remember: You are creating a professional report that synthesizes ALL the information provided above.
-    """
+#     Remember: You are creating a professional report that synthesizes ALL the information provided above.
+#     """
     
-    agent = Agent(system_prompt=system_prompt, tools=[file_write, editor], messages=[])
-    response = agent(enhanced_query)
-    print("\n\n")
-    return response 
+#     agent = Agent(system_prompt=system_prompt, tools=[file_write, editor], messages=[])
+#     response = agent(enhanced_query)
+#     print("\n\n")
+#     return str(response)

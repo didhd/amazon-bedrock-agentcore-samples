@@ -23,11 +23,7 @@ Your TOOLS include:
    - Finds all nested links on a given URL and extracts their content.
    - Excellent for deep dives into a single website to gather comprehensive information.
 
-**RULES:**
-- You **must** start the research process by creating a step-by-step plan to answer the user's query.
-- You can iterate on your research plan, using any combination of the tools, until you are satisfied with the results.
-- You must convert all outputs to strings.
-- Your final output should be a comprehensive and well-structured report.
+All results must be returned as strings
 """
 
 tool_names = [

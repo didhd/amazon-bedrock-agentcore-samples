@@ -26,26 +26,20 @@ customer_id | name
 2 | John Doe
 
 If you receive an error, carefully analyze it and fix your query.
+
+**CRITICAL: String Conversion Rule**
+- ALWAYS wrap variables in str() before concatenating with strings
+- Use f"{str(variable)}" or str(variable) + "text" patterns
+- This prevents TypeError when mixing integers/floats with strings
+
+**String Concatenation Examples:**
+```python
+# CORRECT - Always use str()
+count = 42
+message = f"Found {str(count)} items"
+filename = f"report_{str(user_id)}_{str(timestamp)}.csv"
+print("Total: " + str(total_value))
+
+# WRONG - Never concatenate without str()
+# message = f"Found {count} items"  # May fail if count is not string
 """
-
-# --- Tool Definition ---
-
-@tool
-def create_nl2sql_agent(query: str) -> str:
-    """
-    Create and configure the NL2SQL agent with appropriate tools and system prompt.
-    
-    Returns:
-        Agent: Configured Strands agent instance
-    """
-    
-    # Create the agent with tools and system prompt
-
-    agent = Agent(
-        system_prompt=system_prompt,
-        messages=[]
-    )
-
-    response = agent(query)
-    
-    return response
