@@ -105,11 +105,21 @@ def create_agentcore_role(agent_name):
                     "ecr:BatchGetImage",
                     "ecr:GetDownloadUrlForLayer",
 <<<<<<< HEAD
+<<<<<<< HEAD
                     "ecr:GetAuthorizationToken",
                     "ecr: BatchGetImage",
                     "ecr: GetDownloadUrlForLayer"
 =======
                     "ecr:GetAuthorizationToken"
+>>>>>>> 37c24793441ec48b94cb535511c7c2bf68f0ea76
+=======
+<<<<<<<< HEAD:02-use-cases/08-marketing-agent/utils.py
+                    "ecr:GetAuthorizationToken",
+                    "ecr: BatchGetImage",
+                    "ecr: GetDownloadUrlForLayer"
+========
+                    "ecr:GetAuthorizationToken"
+>>>>>>>> 37c24793441ec48b94cb535511c7c2bf68f0ea76:01-tutorials/utils.py
 >>>>>>> 37c24793441ec48b94cb535511c7c2bf68f0ea76
                 ],
                 "Resource": [
@@ -257,7 +267,11 @@ def create_agentcore_role(agent_name):
         print(e)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     return agentcore_iam_role
+=======
+    return agentcore_iam_role
+>>>>>>> 37c24793441ec48b94cb535511c7c2bf68f0ea76
 =======
     return agentcore_iam_role
 >>>>>>> 37c24793441ec48b94cb535511c7c2bf68f0ea76

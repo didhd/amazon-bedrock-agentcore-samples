@@ -104,9 +104,13 @@ def create_agentcore_role(agent_name):
                 "Action": [
                     "ecr:BatchGetImage",
                     "ecr:GetDownloadUrlForLayer",
+<<<<<<<< HEAD:02-use-cases/08-marketing-agent/utils.py
                     "ecr:GetAuthorizationToken",
                     "ecr: BatchGetImage",
                     "ecr: GetDownloadUrlForLayer"
+========
+                    "ecr:GetAuthorizationToken"
+>>>>>>>> 37c24793441ec48b94cb535511c7c2bf68f0ea76:01-tutorials/utils.py
                 ],
                 "Resource": [
                     f"arn:aws:ecr:{region}:{account_id}:repository/*"
