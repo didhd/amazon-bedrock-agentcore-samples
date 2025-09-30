@@ -7,27 +7,45 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 build/
 dist/
 *.egg-info/
+*.whl
 
-# Logs and local env
-*.log
+# Environment files
 .env
 *.env
+.env.local
+.env.production
 
 # IDE directories
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # Test outputs
 .coverage
 htmlcov/
+.pytest_cache/
+.tox/
 
-# Other
+# Logs
+*.log
+logs/
+
+# Runtime files
 workflows/
 repl_state/
 
@@ -35,4 +53,27 @@ repl_state/
 output/images/
 output/reports/
 ai_*.png
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Generated reports (except examples)
 *.md
+!README.md
+!LICENSE.md
+
+# AgentCore specific
+.bedrock_agentcore/
+.agentcore/
+
+# Memory and cache
+*.db
+*.sqlite
+*.sqlite3
+memory_cache/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
