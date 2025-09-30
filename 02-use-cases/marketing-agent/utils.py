@@ -104,9 +104,7 @@ def create_agentcore_role(agent_name):
                 "Action": [
                     "ecr:BatchGetImage",
                     "ecr:GetDownloadUrlForLayer",
-                    "ecr:GetAuthorizationToken",
-                    "ecr: BatchGetImage",
-                    "ecr: GetDownloadUrlForLayer"
+                    "ecr:GetAuthorizationToken"
                 ],
                 "Resource": [
                     f"arn:aws:ecr:{region}:{account_id}:repository/*"
