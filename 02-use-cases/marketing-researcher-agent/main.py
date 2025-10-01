@@ -20,7 +20,7 @@ from strands.hooks import (
     HookRegistry,
     MessageAddedEvent,
 )
-from strands_tools import python_repl, file_write, editor
+from strands_tools import python_repl, file_write, editor, workflow
 from strands_tools.agent_core_memory import AgentCoreMemoryToolProvider
 
 # Import custom tools
@@ -28,6 +28,9 @@ from tools.tavily_tool import web_search, web_extract, web_crawl
 from tools.knowledge_base_tool import get_schema
 from tools.sqllite_tool import run_sqlite_query
 from constants import BEDROCK_MODEL
+
+# Import specialized agents
+from agents import planner_agent, researcher_agent, python_agent, report_agent, text2sql_agent, reflection_agent
 
 # Set environment for tools
 os.environ["STRANDS_TOOL_CONSOLE_MODE"] = "enabled"
@@ -174,21 +177,21 @@ def get_or_create_memory():
         return None, None
 
 
-def create_marketing_agent(
+def create_marketing_orchestrator(
     user_id: str,
     session_id: str,
     memory_client: MemoryClient = None,
     memory_id: str = None,
 ):
-    """Create marketing researcher agent with production-ready configuration"""
+    """Create marketing researcher orchestrator with multi-agent workflow capabilities"""
 
-    # Dynamic system prompt with current date and context using Python string formatting
     from datetime import datetime
+    from strands_tools import workflow
 
     now = datetime.now()
     current_quarter = (now.month - 1) // 3 + 1
 
-    system_prompt = f"""You are a Marketing Researcher Agent, an expert in market research, data analysis, and report generation.
+    system_prompt = f"""You are a Marketing Research Orchestrator, managing a team of specialized AI agents to conduct comprehensive marketing research and analysis.
 
 ## Current Context
 - **Current Date**: {now.strftime("%B %d, %Y")}
@@ -197,80 +200,104 @@ def create_marketing_agent(
 - **User ID**: {user_id}
 - **Session ID**: {session_id}
 
-## Your Capabilities
-You have access to powerful tools for:
-- Web research and market intelligence (web_search, web_extract, web_crawl)
-- Customer database analysis (get_schema, run_sqlite_query)
-- Data analysis and visualization (python_repl)
-- Report generation (file_write, editor)
-- Memory management for storing insights and preferences
+## Your Specialized Agent Team
+You have access to these specialist agents via the workflow tool:
 
-## Core Functions
-1. **Market Research**: Conduct comprehensive research using web search tools
-2. **Data Analysis**: Analyze customer data and purchasing patterns from databases
-3. **Visualization**: Create data visualizations and charts using Python
-4. **Report Generation**: Generate professional marketing reports and executive summaries
-5. **Memory Management**: Store and retrieve marketing insights and user preferences across sessions
+1. **planner_agent**: Creates detailed execution plans and breaks requests into tasks
+2. **researcher_agent**: Conducts web research using search, extract, and crawl tools
+3. **text2sql_agent**: Analyzes customer databases by generating SQL queries
+4. **python_agent**: Performs data analysis and creates visualizations using Python
+5. **report_agent**: Generates professional markdown reports and saves them to files
+6. **reflection_agent**: Reviews work quality and suggests improvements
 
-## Research Guidelines
-When conducting research:
-- Use web_search to find current market trends and competitive intelligence for {now.year}
-- When users ask about "this year" or "current trends", they mean {now.year}
-- Use get_schema and run_sqlite_query to analyze customer databases
-- Use python_repl for data analysis and creating visualizations
-- Use file_write to save reports and findings to the output/ directory
-- Use memory tools to store important insights and user preferences
-- Always consider the current date ({now.strftime("%B %d, %Y")}) when analyzing trends and making predictions
+## Multi-Agent Workflow Process
+For complex requests, use the workflow tool to orchestrate multiple agents:
 
-## Visualization and Report Integration Guidelines
-When creating visualizations and reports:
-- When using python_repl to create charts/graphs, save PNG files to the output/ directory
-- After creating PNG files, ALWAYS embed them in your markdown reports using relative paths
-- Use markdown image syntax: ![Description](./filename.png)
-- When writing reports with file_write, check the output/ directory for any PNG files created during the session
-- Include all relevant visualizations in the final report to provide comprehensive analysis
-- Place images strategically within the report sections they support
-- Always reference and describe the visualizations in the text
+### Step 1: Create Workflow
+```
+workflow(
+    action="create",
+    workflow_id="marketing_analysis_{{unique_id}}",
+    tasks=[
+        {{
+            "task_id": "research_market",
+            "description": "Research current market trends and competitive landscape",
+            "agent": "researcher_agent",
+            "dependencies": [],
+            "priority": 5
+        }},
+        {{
+            "task_id": "analyze_data", 
+            "description": "Analyze research data and create visualizations",
+            "agent": "python_agent",
+            "dependencies": ["research_market"],
+            "priority": 3
+        }},
+        {{
+            "task_id": "generate_report",
+            "description": "Create comprehensive marketing report with findings",
+            "agent": "report_agent", 
+            "dependencies": ["research_market", "analyze_data"],
+            "priority": 1
+        }}
+    ]
+)
+```
 
-## Output Standards
-- Provide thorough, data-driven insights with current context
-- Create professional reports with proper date references
-- Remember user preferences and build upon previous research findings
-- Include relevant timeframes and specify when data is from {now.year} vs. previous years
-- Use the current quarter (Q{current_quarter}) context for quarterly analyses
+### Step 2: Execute Workflow
+```
+workflow(action="start", workflow_id="marketing_analysis_{{unique_id}}")
+```
 
-## File Management and Integration Protocol
-IMPORTANT: When creating reports that include visualizations:
-1. **Track PNG Creation**: After using python_repl to create charts, note the exact filename and path
-2. **Embed in Reports**: When using file_write for markdown reports, include PNG files using: ![Chart Description](./filename.png)
-3. **Check Output Directory**: Before finalizing reports, check what PNG files exist in output/ directory
-4. **Complete Integration**: Ensure all relevant visualizations are embedded in the final markdown report
-5. **Descriptive Alt Text**: Use meaningful descriptions for accessibility: ![Market Growth Chart 2025](./chart.png)
+### Step 3: Monitor Progress
+```
+workflow(action="status", workflow_id="marketing_analysis_{{unique_id}}")
+```
 
-Example workflow:
-- python_repl creates "market_trends_2025.png" 
-- file_write includes: "![Market Trends Analysis](./market_trends_2025.png)" in the markdown
-- Result: Complete report with embedded visualizations"""
+## Decision Framework
+- **Simple requests**: Handle directly with your own tools
+- **Complex requests**: Use workflow tool to coordinate specialist agents
+- **Research-heavy**: Always include researcher_agent
+- **Data analysis**: Include python_agent for calculations and visualizations  
+- **Database queries**: Use text2sql_agent for customer data analysis
+- **Final output**: Always end with report_agent for professional reports
+
+## Workflow Guidelines
+- Create unique workflow_id for each request (use timestamp or UUID)
+- Break complex requests into logical, sequential tasks
+- Use parallel execution when tasks are independent (no dependencies)
+- Always include a final report generation step assigned to report_agent
+- Consider adding reflection_agent for quality review on complex analyses
+- Set appropriate priorities (5=highest, 1=lowest)
+
+## Current Context for Analysis
+- Focus on {now.year} data and trends
+- Consider Q{current_quarter} context for quarterly analyses
+- Include both current market state and future projections
+- Integrate multiple data sources for comprehensive insights
+
+Your role is to intelligently decide when to use multi-agent workflows vs. direct processing, and orchestrate the team effectively to deliver comprehensive, professional marketing research results."""
 
     # Production-ready model configuration
     from strands.models.bedrock import BedrockModel
 
     agent_model = BedrockModel(
         model_id=BEDROCK_MODEL,
-        temperature=0.3,  # Lower temperature for more consistent results
-        max_tokens=4000,  # Increased for comprehensive reports
+        temperature=0.3,
+        max_tokens=4000,
         top_p=0.8,
     )
 
-    # Explicitly specify tools for production (no auto-loading)
+    # Core tools for orchestration
     tools = [
-        web_search,
+        workflow,  # Multi-agent workflow orchestration
+        web_search,  # Direct research capability
         web_extract,
         web_crawl,
-        get_schema,
+        get_schema,  # Database analysis
         run_sqlite_query,
-        python_repl,
-        file_write,
+        python_repl,  # Data analysis
+        file_write,  # Report generation
         editor,
     ]
 
@@ -299,14 +326,14 @@ Example workflow:
     from strands.agent.conversation_manager import SlidingWindowConversationManager
 
     conversation_manager = SlidingWindowConversationManager(
-        window_size=10,  # Limit history size to prevent context overflow
+        window_size=15,  # Increased for multi-agent context
     )
 
-    # Create agent with production configuration
+    # Create orchestrator agent
     agent = Agent(
         model=agent_model,
         system_prompt=system_prompt,
-        tools=tools,  # Explicitly specified tools
+        tools=tools,
         hooks=hooks,
         conversation_manager=conversation_manager,
         state={"actor_id": user_id, "session_id": session_id},
@@ -349,17 +376,17 @@ async def invoke(payload):
                 f"Memory initialization failed, continuing without memory: {memory_error}"
             )
 
-        # Create agent with production configuration
-        agent = create_marketing_agent(user_id, session_id, memory_client, memory_id)
+        # Create multi-agent orchestrator
+        orchestrator = create_marketing_orchestrator(user_id, session_id, memory_client, memory_id)
 
-        # Process request with enhanced streaming
+        # Process request with multi-agent workflow
         try:
             # Try async streaming first (if available)
-            if hasattr(agent, "stream_async"):
-                logger.info("Using async streaming")
+            if hasattr(orchestrator, "stream_async"):
+                logger.info("Using multi-agent async streaming")
 
-                # Stream the response with simple, clean deduplication
-                stream = agent.stream_async(user_message)
+                # Stream the response with workflow coordination
+                stream = orchestrator.stream_async(user_message)
                 full_response = ""
                 tool_messages_sent = set()
 
@@ -416,8 +443,8 @@ async def invoke(payload):
 
             else:
                 # Fallback to synchronous processing
-                logger.info("Using synchronous processing")
-                result = agent(user_message)
+                logger.info("Using synchronous multi-agent processing")
+                result = orchestrator(user_message)
 
                 # Extract and yield the response
                 if hasattr(result, "message") and result.message:
