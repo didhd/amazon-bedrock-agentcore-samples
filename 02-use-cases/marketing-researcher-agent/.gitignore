@@ -50,10 +50,10 @@ workflows/
 repl_state/
 
 # Output files
-output/images/
+output/*.png
+output/
 output/reports/
 ai_*.png
-*.png
 *.jpg
 *.jpeg
 *.gif

@@ -2,8 +2,8 @@
 strands-agents[bedrock,otel]>=0.1.0
 strands-agents-tools>=0.1.0
 
-# Memory Layer
-mem0ai>=0.1.0
+# Memory Layer - AgentCore Memory (managed service)
+# No additional dependencies required for AgentCore Memory
 
 # Web Search and Research
 tavily-python>=0.3.0
@@ -39,3 +39,6 @@ opentelemetry-exporter-otlp-proto-http>=1.20.0
 
 # Environment and Configuration
 python-decouple>=3.8
+
+# Web Interface
+streamlit>=1.28.0
