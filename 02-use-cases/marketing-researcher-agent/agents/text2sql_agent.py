@@ -1,5 +1,8 @@
 import logging
 from strands import Agent, tool
+from agents import default_model
+from tools.knowledge_base_tool import get_schema
+from tools.sqllite_tool import run_sqlite_query
 
 logger = logging.getLogger(__name__)
 
@@ -28,24 +31,27 @@ customer_id | name
 If you receive an error, carefully analyze it and fix your query.
 """
 
+# Create the actual Agent object
+text2sql_agent = Agent(
+    model=default_model,
+    system_prompt=system_prompt,
+    tools=[get_schema, run_sqlite_query]
+)
+
+tool_names = ["get_schema", "run_sqlite_query"]
+
 # --- Tool Definition ---
 
 @tool
-def create_nl2sql_agent(query: str) -> str:
+def text2sql_agent_tool(query: str) -> str:
     """
-    Create and configure the NL2SQL agent with appropriate tools and system prompt.
+    NL2SQL agent that converts natural language questions into SQL queries and executes them.
     
+    Args:
+        query: A natural language question about the database
+        
     Returns:
-        Agent: Configured Strands agent instance
+        SQL query results and analysis
     """
-    
-    # Create the agent with tools and system prompt
-
-    agent = Agent(
-        system_prompt=system_prompt,
-        messages=[]
-    )
-
-    response = agent(query)
-    
-    return response
+    response = text2sql_agent(query)
+    return str(response)

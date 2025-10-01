@@ -45,12 +45,19 @@ RETRY
 ---
 """
 
+# Create the actual Agent object
+reflection_agent = Agent(
+    model=default_model,
+    system_prompt=system_prompt,
+    tools=[]
+)
 
+tool_names = []
 
 # --- Tool Definition ---
 
 @tool
-def reflection_agent(query: str) -> str:
+def reflection_agent_tool(query: str) -> str:
     """
     Agent that reviews the work of other agents and decides whether to proceed or retry.
     Provides detailed quality assessment and actionable feedback.
@@ -61,7 +68,5 @@ def reflection_agent(query: str) -> str:
     Returns:
         A string containing the detailed critique and the final decision ('PROCEED' or 'RETRY').
     """
-    agent = Agent(system_prompt=system_prompt, messages=[])
-    response = agent(query)
-    print("\n\n")
-    return response 
+    response = reflection_agent(query)
+    return str(response) 

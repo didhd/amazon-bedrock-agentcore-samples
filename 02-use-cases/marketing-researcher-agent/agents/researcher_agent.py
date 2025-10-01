@@ -1,4 +1,7 @@
 import datetime
+from strands import Agent, tool
+from agents import default_model
+from tools.tavily_tool import web_search, web_extract, web_crawl
 
 today = datetime.datetime.today().strftime("%A, %B %d, %Y")
 
@@ -30,8 +33,29 @@ Your TOOLS include:
 - Your final output should be a comprehensive and well-structured report.
 """
 
+# Create the actual Agent object
+researcher_agent = Agent(
+    model=default_model,
+    system_prompt=system_prompt,
+    tools=[web_search, web_extract, web_crawl]
+)
+
 tool_names = [
     "web_search",
-    "web_extract",
+    "web_extract", 
     "web_crawl",
-] 
+]
+
+@tool
+def researcher_agent_tool(query: str) -> str:
+    """
+    Expert research assistant that conducts comprehensive web research and analysis.
+    
+    Args:
+        query: A research question or topic requiring factual information gathering
+        
+    Returns:
+        A comprehensive research report with findings from multiple sources
+    """
+    response = researcher_agent(query)
+    return str(response) 

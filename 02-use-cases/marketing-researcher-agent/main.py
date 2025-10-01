@@ -20,7 +20,7 @@ from strands.hooks import (
     HookRegistry,
     MessageAddedEvent,
 )
-from strands_tools import python_repl, file_write, editor, workflow
+from strands_tools import python_repl, file_write, editor
 from strands_tools.agent_core_memory import AgentCoreMemoryToolProvider
 
 # Import custom tools
@@ -28,9 +28,6 @@ from tools.tavily_tool import web_search, web_extract, web_crawl
 from tools.knowledge_base_tool import get_schema
 from tools.sqllite_tool import run_sqlite_query
 from constants import BEDROCK_MODEL
-
-# Import specialized agents
-from agents import planner_agent, researcher_agent, python_agent, report_agent, text2sql_agent, reflection_agent
 
 # Set environment for tools
 os.environ["STRANDS_TOOL_CONSOLE_MODE"] = "enabled"
@@ -186,7 +183,12 @@ def create_marketing_orchestrator(
     """Create marketing researcher orchestrator with multi-agent workflow capabilities"""
 
     from datetime import datetime
-    from strands_tools import workflow
+    from agents.planner_agent import planner_agent_tool
+    from agents.researcher_agent import researcher_agent_tool
+    from agents.python_agent import python_agent_tool
+    from agents.text2sql_agent import text2sql_agent_tool
+    from agents.report_agent import report_agent_tool
+    from agents.reflection_agent import reflection_agent_tool
 
     now = datetime.now()
     current_quarter = (now.month - 1) // 3 + 1
@@ -201,74 +203,59 @@ def create_marketing_orchestrator(
 - **Session ID**: {session_id}
 
 ## Your Specialized Agent Team
-You have access to these specialist agents via the workflow tool:
+You have access to these specialist agents as tools:
 
-1. **planner_agent**: Creates detailed execution plans and breaks requests into tasks
-2. **researcher_agent**: Conducts web research using search, extract, and crawl tools
-3. **text2sql_agent**: Analyzes customer databases by generating SQL queries
-4. **python_agent**: Performs data analysis and creates visualizations using Python
-5. **report_agent**: Generates professional markdown reports and saves them to files
-6. **reflection_agent**: Reviews work quality and suggests improvements
+1. **planner_agent_tool**: Creates detailed execution plans and breaks requests into tasks
+2. **researcher_agent_tool**: Conducts web research using search, extract, and crawl tools
+3. **text2sql_agent_tool**: Analyzes customer databases by generating SQL queries
+4. **python_agent_tool**: Performs data analysis and creates visualizations using Python
+5. **report_agent_tool**: Generates professional markdown reports and saves them to files
+6. **reflection_agent_tool**: Reviews work quality and suggests improvements
 
 ## Multi-Agent Workflow Process
-For complex requests, use the workflow tool to orchestrate multiple agents:
+For complex requests, coordinate multiple agents in sequence:
 
-### Step 1: Create Workflow
-```
-workflow(
-    action="create",
-    workflow_id="marketing_analysis_{{unique_id}}",
-    tasks=[
-        {{
-            "task_id": "research_market",
-            "description": "Research current market trends and competitive landscape",
-            "agent": "researcher_agent",
-            "dependencies": [],
-            "priority": 5
-        }},
-        {{
-            "task_id": "analyze_data", 
-            "description": "Analyze research data and create visualizations",
-            "agent": "python_agent",
-            "dependencies": ["research_market"],
-            "priority": 3
-        }},
-        {{
-            "task_id": "generate_report",
-            "description": "Create comprehensive marketing report with findings",
-            "agent": "report_agent", 
-            "dependencies": ["research_market", "analyze_data"],
-            "priority": 1
-        }}
-    ]
-)
-```
-
-### Step 2: Execute Workflow
-```
-workflow(action="start", workflow_id="marketing_analysis_{{unique_id}}")
-```
-
-### Step 3: Monitor Progress
-```
-workflow(action="status", workflow_id="marketing_analysis_{{unique_id}}")
-```
+### Example Workflow:
+1. **Planning**: Use planner_agent_tool to break down complex requests
+2. **Research**: Use researcher_agent_tool for market intelligence
+3. **Analysis**: Use python_agent_tool for data analysis and visualizations
+4. **Database**: Use text2sql_agent_tool for customer data queries
+5. **Quality**: Use reflection_agent_tool to review work quality
+6. **Report**: Use report_agent_tool to synthesize final reports
 
 ## Decision Framework
-- **Simple requests**: Handle directly with your own tools
-- **Complex requests**: Use workflow tool to coordinate specialist agents
-- **Research-heavy**: Always include researcher_agent
-- **Data analysis**: Include python_agent for calculations and visualizations  
-- **Database queries**: Use text2sql_agent for customer data analysis
-- **Final output**: Always end with report_agent for professional reports
+- **Simple requests**: Handle directly with your own tools or single agent
+- **Complex requests**: Coordinate multiple specialist agents
+- **Research-heavy**: Always include researcher_agent_tool
+- **Data analysis**: Include python_agent_tool for calculations and visualizations  
+- **Database queries**: Use text2sql_agent_tool for customer data analysis
+- **Final output**: Always end with report_agent_tool for professional reports
 
-## Workflow Guidelines
-- Create unique workflow_id for each request (use timestamp or UUID)
-- Break complex requests into logical, sequential tasks
-- Use parallel execution when tasks are independent (no dependencies)
-- Always include a final report generation step assigned to report_agent
-- Consider adding reflection_agent for quality review on complex analyses
-- Set appropriate priorities (5=highest, 1=lowest)
+## Task Management Example
+For complex workflows, manage tasks like this:
+
+```python
+tasks = {{
+    "market_research": {{
+        "description": "Research current sustainable fashion market trends",
+        "agent": researcher_agent_tool,
+        "status": "pending",
+        "dependencies": []
+    }},
+    "data_analysis": {{
+        "description": "Analyze market data and create visualizations", 
+        "agent": python_agent_tool,
+        "status": "pending",
+        "dependencies": ["market_research"]
+    }},
+    "final_report": {{
+        "description": "Generate comprehensive marketing report",
+        "agent": report_agent_tool,
+        "status": "pending", 
+        "dependencies": ["market_research", "data_analysis"]
+    }}
+}}
+```
 
 ## Current Context for Analysis
 - Focus on {now.year} data and trends
@@ -276,7 +263,7 @@ workflow(action="status", workflow_id="marketing_analysis_{{unique_id}}")
 - Include both current market state and future projections
 - Integrate multiple data sources for comprehensive insights
 
-Your role is to intelligently decide when to use multi-agent workflows vs. direct processing, and orchestrate the team effectively to deliver comprehensive, professional marketing research results."""
+Your role is to intelligently coordinate these specialist agents to deliver comprehensive, professional marketing research results. Use the agents as tools to break down complex requests into manageable tasks."""
 
     # Production-ready model configuration
     from strands.models.bedrock import BedrockModel
@@ -288,16 +275,23 @@ Your role is to intelligently decide when to use multi-agent workflows vs. direc
         top_p=0.8,
     )
 
-    # Core tools for orchestration
+    # Core tools including specialist agents
     tools = [
-        workflow,  # Multi-agent workflow orchestration
-        web_search,  # Direct research capability
+        # Specialist agent tools
+        planner_agent_tool,
+        researcher_agent_tool,
+        python_agent_tool,
+        text2sql_agent_tool,
+        report_agent_tool,
+        reflection_agent_tool,
+        # Direct tools for simple tasks
+        web_search,
         web_extract,
         web_crawl,
-        get_schema,  # Database analysis
+        get_schema,
         run_sqlite_query,
-        python_repl,  # Data analysis
-        file_write,  # Report generation
+        python_repl,
+        file_write,
         editor,
     ]
 

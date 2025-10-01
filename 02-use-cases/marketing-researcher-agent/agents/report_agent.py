@@ -1,6 +1,5 @@
 from strands import Agent, tool
 from strands_tools import file_write, editor
-
 from agents import default_model
 
 # --- Agent Definition ---
@@ -43,12 +42,19 @@ You will receive:
 
 Your final output should be the confirmation message from the file_write tool."""
 
+# Create the actual Agent object
+report_agent = Agent(
+    model=default_model,
+    system_prompt=system_prompt,
+    tools=[file_write, editor]
+)
+
 tool_names = ["file_write", "editor"]
 
 # --- Tool Definition ---
 
 @tool
-def report_agent(query: str) -> str:
+def report_agent_tool(query: str) -> str:
     """
     Agent that generates a comprehensive markdown report by synthesizing all previous task results.
     Automatically detects and contextualizes PNG files generated during the workflow.
@@ -111,7 +117,5 @@ def report_agent(query: str) -> str:
     Remember: You are creating a professional report that synthesizes ALL the information provided above.
     """
     
-    agent = Agent(system_prompt=system_prompt, tools=[file_write, editor], messages=[])
-    response = agent(enhanced_query)
-    print("\n\n")
-    return response 
+    response = report_agent(enhanced_query)
+    return str(response) 

@@ -1,4 +1,6 @@
+from strands import Agent, tool
 from strands_tools import python_repl
+from agents import default_model
 
 system_prompt = """You are a Python expert. You can write and execute Python code to perform calculations, data analysis, visualizations, or other tasks related to a marketing plan.
 
@@ -42,6 +44,26 @@ else:
 
 Your final answer should include both the analysis results and confirmation of any files created."""
 
+# Create the actual Agent object
+python_agent = Agent(
+    model=default_model,
+    system_prompt=system_prompt,
+    tools=[python_repl]
+)
+
 # A list of tool names that this agent requires.
-# The workflow tool will provide the actual tool objects from the orchestrator's toolset.
-tool_names = ["python_repl"] 
+tool_names = ["python_repl"]
+
+@tool
+def python_agent_tool(query: str) -> str:
+    """
+    Python expert agent that performs data analysis, calculations, and creates visualizations.
+    
+    Args:
+        query: A task description requiring Python code execution, data analysis, or visualization
+        
+    Returns:
+        Analysis results and confirmation of any files created
+    """
+    response = python_agent(query)
+    return str(response) 

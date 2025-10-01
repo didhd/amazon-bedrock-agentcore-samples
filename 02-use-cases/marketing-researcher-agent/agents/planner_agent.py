@@ -1,3 +1,6 @@
+from strands import Agent, tool
+from agents import default_model
+
 system_prompt = """You are an expert project manager and workflow planner. Your job is to create a detailed, step-by-step plan to address a user's request.
 
 You have a team of specialist agents that you can assign to each task. The available agents are:
@@ -56,4 +59,25 @@ Each task dictionary in the list must have the following keys:
 }
 """
 
-tool_names = [] 
+# Create the actual Agent object
+planner_agent = Agent(
+    model=default_model,
+    system_prompt=system_prompt,
+    tools=[]
+)
+
+tool_names = []
+
+@tool
+def planner_agent_tool(query: str) -> str:
+    """
+    Expert project manager that creates detailed workflow plans for complex requests.
+    
+    Args:
+        query: A user request that needs to be broken down into a structured workflow
+        
+    Returns:
+        A JSON plan with tasks, dependencies, and agent assignments
+    """
+    response = planner_agent(query)
+    return str(response)
