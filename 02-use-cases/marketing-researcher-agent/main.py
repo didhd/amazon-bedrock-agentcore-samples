@@ -371,7 +371,9 @@ async def invoke(payload):
             )
 
         # Create multi-agent orchestrator
-        orchestrator = create_marketing_orchestrator(user_id, session_id, memory_client, memory_id)
+        orchestrator = create_marketing_orchestrator(
+            user_id, session_id, memory_client, memory_id
+        )
 
         # Process request with multi-agent workflow
         try:
@@ -422,9 +424,9 @@ async def invoke(payload):
                                             "name": tool_name,
                                             "id": tool_id,
                                             "input": tool_input,
-                                            "status": "running"
+                                            "status": "running",
                                         }
-                                        
+
                                         tool_message = f"<TOOL_START>{json.dumps(tool_data)}</TOOL_START>"
                                         yield tool_message
 
