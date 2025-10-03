@@ -151,9 +151,8 @@ def render_markdown_with_images(content, base_path="output"):
     """Render markdown content with proper image handling for Streamlit"""
     import re
     
-    # Find all image references in markdown
-    image_pattern = r'!\[([^\]]*)\]\(\.\/([^)]+)\)'
-    images = re.findall(image_pattern, content)
+    # Find all image references in markdown - handle both ./path and output/path patterns
+    image_pattern = r'!\[([^\]]*)\]\(([^)]+)\)'
     
     # Split content by images to render them separately
     parts = re.split(image_pattern, content)
@@ -169,14 +168,26 @@ def render_markdown_with_images(content, base_path="output"):
             alt_text = parts[i + 1]
             image_path = parts[i + 2]
             
-            # Construct full path
-            full_image_path = os.path.join(base_path, image_path)
+            # Handle different image path formats
+            if image_path.startswith('./'):
+                # Remove ./ prefix
+                image_path = image_path[2:]
+            
+            # If path doesn't start with output/, prepend it
+            if not image_path.startswith('output/'):
+                if image_path.startswith('images/'):
+                    full_image_path = os.path.join(base_path, image_path)
+                else:
+                    full_image_path = os.path.join(base_path, 'images', image_path)
+            else:
+                full_image_path = image_path
             
             # Render image if it exists
             if os.path.exists(full_image_path):
                 st.image(full_image_path, caption=alt_text, use_container_width=True)
             else:
-                st.warning(f"Image not found: {image_path}")
+                st.warning(f"Image not found: {full_image_path}")
+                st.info(f"Looking for: {full_image_path}")
             
             i += 3
         else:
@@ -402,13 +413,14 @@ def main():
         # Generated Reports (only .md files)
         st.subheader("Generated Reports")
         output_dir = "output"
+        reports_dir = os.path.join(output_dir, "reports")
 
-        if os.path.exists(output_dir):
+        if os.path.exists(reports_dir):
             # Filter only .md files
             md_files = [
                 f
-                for f in os.listdir(output_dir)
-                if f.endswith(".md") and os.path.isfile(os.path.join(output_dir, f))
+                for f in os.listdir(reports_dir)
+                if f.endswith(".md") and os.path.isfile(os.path.join(reports_dir, f))
             ]
 
             if md_files:
@@ -416,10 +428,10 @@ def main():
 
                 for file in sorted(
                     md_files,
-                    key=lambda x: os.path.getmtime(os.path.join(output_dir, x)),
+                    key=lambda x: os.path.getmtime(os.path.join(reports_dir, x)),
                     reverse=True,
                 ):
-                    file_path = os.path.join(output_dir, file)
+                    file_path = os.path.join(reports_dir, file)
                     file_size = os.path.getsize(file_path)
                     file_time = os.path.getmtime(file_path)
 
@@ -478,7 +490,7 @@ def main():
                 if st.button("Clear All Reports", use_container_width=True):
                     try:
                         for file in md_files:
-                            os.remove(os.path.join(output_dir, file))
+                            os.remove(os.path.join(reports_dir, file))
                         st.success("All reports cleared!")
                         st.rerun()
                     except Exception as e:
@@ -509,7 +521,8 @@ def main():
     if st.session_state.get("show_preview"):
         file_to_preview = st.session_state.show_preview
         output_dir = "output"
-        file_path = os.path.join(output_dir, file_to_preview)
+        reports_dir = os.path.join(output_dir, "reports")
+        file_path = os.path.join(reports_dir, file_to_preview)
 
         if os.path.exists(file_path):
             col1, col2 = st.columns([4, 1])
