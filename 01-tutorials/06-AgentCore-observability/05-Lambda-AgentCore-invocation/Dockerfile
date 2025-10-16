@@ -36,6 +36,9 @@ EXPOSE 8080
 # Copy entire project (respecting .dockerignore)
 COPY . .
 
-# Use the full module path
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import sys; sys.exit(0)"
 
+# Use the full module path
 CMD ["opentelemetry-instrument", "python", "-m", "mcp_agent_multi_server"]

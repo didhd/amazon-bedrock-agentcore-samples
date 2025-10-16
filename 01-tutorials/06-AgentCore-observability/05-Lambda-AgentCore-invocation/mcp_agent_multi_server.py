@@ -2,7 +2,6 @@ from strands import Agent
 from strands.models import BedrockModel
 from mcp import StdioServerParameters, stdio_client
 from strands.tools.mcp import MCPClient
-import json
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 # Initialize the BedrockAgentCoreApp

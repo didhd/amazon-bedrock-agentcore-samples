@@ -23,7 +23,7 @@ def lambda_handler(event, context):
         agent_arn = os.environ.get('AGENT_ARN')
         endpoint_arn = os.environ.get('ENDPOINT_ARN')
 
-        print(f"Lambda function started")
+        print("Lambda function started")
         print(f"Agent ARN: {agent_arn}")
         print(f"Endpoint ARN: {endpoint_arn}")
 
@@ -59,14 +59,14 @@ def lambda_handler(event, context):
         payload = json.dumps({"prompt": prompt})
 
         # Invoke AgentCore Runtime
-        print(f"Invoking AgentCore Runtime...")
+        print("Invoking AgentCore Runtime...")
         response = bedrock_agentcore_client.invoke_agent_runtime(
             agentRuntimeArn=endpoint_arn,
             runtimeSessionId=session_id,
             payload=payload
         )
 
-        print(f"Response received from AgentCore")
+        print("Response received from AgentCore")
         print(f"Response keys: {list(response.keys())}")
 
         # Parse response - handle StreamingBody
