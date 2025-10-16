@@ -11,28 +11,26 @@ def lambda_handler(event, context):
     Expected event format:
     {
         "prompt": "Your question here",
-        "sessionId": "optional-session-id"  # Optional
+        "sessionId": "optional-session-id"
     }
     """
 
-    # Initialize boto3 client inside handler for better Lambda performance
+    # Initialize boto3 client
     bedrock_agentcore_client = boto3.client('bedrock-agentcore')
 
     try:
         # Get environment variables
-        agent_arn = os.environ.get('AGENT_ARN')
-        endpoint_arn = os.environ.get('ENDPOINT_ARN')
+        runtime_arn = os.environ.get('RUNTIME_ARN')
 
-        print("Lambda function started")
-        print(f"Agent ARN: {agent_arn}")
-        print(f"Endpoint ARN: {endpoint_arn}")
+        print(f"Lambda function started")
+        print(f"Runtime ARN: {runtime_arn}")
 
-        if not agent_arn or not endpoint_arn:
+        if not runtime_arn:
             return {
                 'statusCode': 500,
                 'body': json.dumps({
                     'error': 'Configuration Error',
-                    'message': 'Missing AGENT_ARN or ENDPOINT_ARN environment variables'
+                    'message': 'Missing RUNTIME_ARN environment variable'
                 })
             }
 
@@ -61,45 +59,35 @@ def lambda_handler(event, context):
         # Invoke AgentCore Runtime
         print("Invoking AgentCore Runtime...")
         response = bedrock_agentcore_client.invoke_agent_runtime(
-            agentRuntimeArn=endpoint_arn,
+            agentRuntimeArn=runtime_arn,
             runtimeSessionId=session_id,
             payload=payload
         )
 
         print("Response received from AgentCore")
-        print(f"Response keys: {list(response.keys())}")
 
         # Parse response - handle StreamingBody
         agent_response = None
 
         if 'response' in response:
             response_body = response['response']
-            print(f"Response body type: {type(response_body).__name__}")
 
-            # Check if it's a StreamingBody (has read method)
+            # Handle StreamingBody
             if hasattr(response_body, 'read'):
-                # It's a StreamingBody, read it
                 raw_data = response_body.read()
-                print(f"Raw data type after read: {type(raw_data).__name__}")
-
                 if isinstance(raw_data, bytes):
                     agent_response = raw_data.decode('utf-8')
                 else:
                     agent_response = str(raw_data)
-
             elif isinstance(response_body, list) and len(response_body) > 0:
-                # It's a list
                 if isinstance(response_body[0], bytes):
                     agent_response = response_body[0].decode('utf-8')
                 else:
                     agent_response = str(response_body[0])
-
             elif isinstance(response_body, bytes):
                 agent_response = response_body.decode('utf-8')
-
             elif isinstance(response_body, str):
                 agent_response = response_body
-
             else:
                 agent_response = str(response_body)
 
@@ -108,14 +96,12 @@ def lambda_handler(event, context):
             print("Warning: No response extracted from AgentCore")
 
         print(f"Agent response received (length: {len(agent_response)} chars)")
-        print(f"Agent response preview: {agent_response[:100]}...")
 
         return {
             'statusCode': 200,
             'body': json.dumps({
                 'response': agent_response,
-                'sessionId': session_id,
-                'agentArn': agent_arn
+                'sessionId': session_id
             }),
             'headers': {
                 'Content-Type': 'application/json'
@@ -134,18 +120,6 @@ def lambda_handler(event, context):
             'body': json.dumps({
                 'error': error_code,
                 'message': error_message
-            })
-        }
-
-    except json.JSONDecodeError as e:
-        print(f"JSON Decode Error: {str(e)}")
-        traceback.print_exc()
-
-        return {
-            'statusCode': 400,
-            'body': json.dumps({
-                'error': 'Invalid JSON',
-                'message': str(e)
             })
         }
 

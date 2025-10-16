@@ -80,6 +80,7 @@ lambda_*.zip
 
 # Docker
 .dockerignore
+Dockerfile
 
 # Project specific - sensitive config
 .bedrock_agentcore.yaml
