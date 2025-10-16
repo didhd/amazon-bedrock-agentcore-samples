@@ -56,10 +56,8 @@ For more details on AgentCore Observability, please refer to [this](https://aws.
 │   ├── images/
 │   └── README.md
 ├── 05-Lambda-AgentCore-invocation/
-│   ├── .dockerignore
 │   ├── .gitignore
 │   ├── agentcore_observability_lambda.ipynb
-│   ├── Dockerfile
 │   ├── lambda_agentcore_invoker.py
 │   ├── mcp_agent_multi_server.py
 │   ├── README.md
@@ -108,7 +106,6 @@ Learn how to invoke AgentCore Runtime agents from AWS Lambda functions with full
 
 - **Lambda Integration**: Deploy serverless functions that invoke hosted agents
 - **MCP Multi-Server**: Use multiple MCP servers (AWS Docs + CDK) in a single agent
-- **X-Ray Tracing**: Enable distributed tracing across Lambda and AgentCore Runtime
 - **CloudWatch GenAI Observability**: Monitor agent behavior and performance in production
 
 ## Getting Started
