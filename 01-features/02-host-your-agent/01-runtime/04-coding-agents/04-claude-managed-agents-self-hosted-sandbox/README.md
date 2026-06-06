@@ -196,13 +196,19 @@ python3 tui_exec.py --runtime-session-id "$SESSION_ID" -- "pytest /workspace -v"
 python3 tui_exec.py --runtime-session-id "$SESSION_ID" -- bash -c 'ls /workspace && cat /workspace/result.json'
 ```
 
-**Interactive PTY over WebSocket** (`tui_shell.py`) — full bash session into the same microVM, with line editing, Ctrl+C, and resize:
+**Interactive PTY over WebSocket** (`tui_shell.py`) — full bash session into the same microVM, with line editing, Ctrl+C, and resize. This uses [`InvokeAgentRuntimeCommandShell`](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-execute-command.html) via the `bedrock-agentcore` SDK's `AgentCoreRuntimeClient.open_shell()`:
 
 ```bash
 python3 tui_shell.py --runtime-session-id "$SESSION_ID"
 ```
 
-Useful when you want to grep around `/workspace`, run partial tests, or watch a file change while the agent edits it. Reusing the same `--command-session-id` reconnects to a previously opened PTY (the previous WebSocket is detached); see [`runtime-execute-command`](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-execute-command.html) for the wire protocol.
+Useful when you want to grep around `/workspace`, run partial tests, or watch a file change while the agent edits it. `tui_shell.py` prints the `shellId` it opened; pass it back with the same `--runtime-session-id` to reconnect to that PTY (the service replays up to 256 KB of buffered output, and up to 10 concurrent shells per runtime are allowed):
+
+```bash
+python3 tui_shell.py --runtime-session-id "$SESSION_ID" --shell-id <shellId>
+```
+
+> **Interactive shells require a runtime created or updated on/after 2026-06-05.** `InvokeAgentRuntimeCommandShell` (and `open_shell()`) only works on runtimes at the post-launch platform version; older runtimes error on connect. If you deployed earlier, re-run `deploy.py` or `aws bedrock-agentcore-control update-agent-runtime …` against the same image to roll the runtime to a new version. The one-shot `tui_exec.py` path (`InvokeAgentRuntimeCommand`) is unaffected. The caller needs `bedrock-agentcore:InvokeAgentRuntimeCommandShell` (interactive) and `bedrock-agentcore:InvokeAgentRuntimeCommand` (one-shot) on the runtime ARN.
 
 The TUI clients use the standard AWS SDK / SigV4 — no Anthropic credentials reach them. They run purely in the AWS data plane: AWS auth, AgentCore session affinity, container PTY.
 

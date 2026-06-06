@@ -1,94 +1,52 @@
 """
-Interactive PTY into the per-session microVM via
-InvokeAgentRuntimeCommandWithWebSocketStream.
+Interactive PTY into the per-session microVM via the AgentCore
+``InvokeAgentRuntimeCommandShell`` API (GA).
 
 Connects the local terminal to a remote bash PTY in the microVM that owns
 the given Anthropic session id. Same session id => same microVM (session
-affinity), so you can attach a shell to a session that the agent is
-actively using and watch /workspace change in real time.
+affinity), so you can attach a shell to a session the agent is actively
+using and watch /workspace change in real time.
 
-Wire protocol:
-    [1 byte channel id][payload bytes]   MAX_FRAME_SIZE = 65536
+This uses the official ``bedrock-agentcore`` SDK's
+``AgentCoreRuntimeClient.open_shell()`` instead of hand-rolling the
+WebSocket + SigV4 + binary framing. The SDK speaks the same wire protocol
+(1-byte channel prefix per frame: STDIN/STDOUT/STDERR/STATUS/RESIZE/
+HEARTBEAT/CLOSE) and adds reconnection with output replay.
 
-    0x00 STDIN   client -> server  raw bytes (keystrokes)
-    0x01 STDOUT  server -> client  raw bytes
-    0x02 STDERR  server -> client  raw bytes
-    0x03 STATUS  server -> client  metav1.Status JSON, one per WS frame
-    0x04 RESIZE  client -> server  JSON {"width":N,"height":N}
-    0xFF CLOSE   either           empty
+``open_shell`` returns an *async* context manager, so the client runs on
+asyncio: one task pumps local stdin into the shell, the main loop async-
+iterates output frames onto the local terminal.
 
-Subprotocol header: v1.command.agentcore.aws.dev (sent as a regular
-header so botocore SigV4 signs it; kwarg `subprotocols=` is rejected by
-the endpoint because it does not echo Sec-WebSocket-Protocol back).
+Reconnect: pass the same ``--runtime-session-id`` AND ``--shell-id`` to
+re-attach to the same PTY after a disconnect (the service replays up to
+256 KB of recent output). ``shell_id`` names the PTY; ``session_id`` routes
+to the VM that hosts it - you need both.
 
 Usage:
     python3 tui_shell.py --runtime-session-id sesn_...
+    python3 tui_shell.py --runtime-session-id sesn_... --shell-id my-shell   # reconnect
 """
 
 from __future__ import annotations
 
 import argparse
+import asyncio
 import fcntl
-import json
 import os
-import select
 import signal
 import struct
 import sys
 import termios
-import threading
 import tty
-import uuid
-from urllib.parse import quote, urlparse
 
 import boto3
-import websocket
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
+from bedrock_agentcore.runtime import (
+    AgentCoreRuntimeClient,
+    ReconnectConfig,
+    ShellChannel,
+)
 
 DEFAULT_REGION = "us-west-2"
-SUBPROTOCOL = "v1.command.agentcore.aws.dev"
-
-CH_STDIN = 0x00
-CH_STDOUT = 0x01
-CH_STDERR = 0x02
-CH_STATUS = 0x03
-CH_RESIZE = 0x04
-CH_CLOSE = 0xFF
-
-
-def default_endpoint(region: str) -> str:
-    return f"https://bedrock-agentcore.{region}.amazonaws.com"
-
-
-def sign_ws_url(
-    endpoint: str,
-    agent_arn: str,
-    region: str,
-    runtime_session_id: str,
-    command_session_id: str,
-    qualifier: str = "DEFAULT",
-) -> tuple[str, list[str]]:
-    creds = boto3.Session(region_name=region).get_credentials().get_frozen_credentials()
-    host = urlparse(endpoint).hostname
-    encoded_arn = quote(agent_arn, safe="")
-    path = f"/runtimes/{encoded_arn}/ws/commands"
-
-    params = {"qualifier": qualifier, "commandSessionId": command_session_id}
-    qs = "&".join(f"{quote(k, safe='')}={quote(v, safe='')}" for k, v in sorted(params.items()))
-    url = f"https://{host}{path}?{qs}"
-
-    headers = {
-        "Host": host,
-        "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": runtime_session_id,
-        "Sec-WebSocket-Protocol": SUBPROTOCOL,
-    }
-    req = AWSRequest(method="GET", url=url, headers=headers)
-    SigV4Auth(creds, "bedrock-agentcore", region).add_auth(req)
-
-    ws_url = url.replace("https://", "wss://")
-    header_list = [f"{k}: {v}" for k, v in req.headers.items()]
-    return ws_url, header_list
 
 
 def get_term_size() -> tuple[int, int]:
@@ -96,113 +54,108 @@ def get_term_size() -> tuple[int, int]:
         s = fcntl.ioctl(sys.stdout.fileno(), termios.TIOCGWINSZ, b"\0" * 8)
         rows, cols, _, _ = struct.unpack("HHHH", s)
         return cols or 80, rows or 24
-    except Exception:
+    except Exception:  # noqa: BLE001 - fall back to a sane default
         return 80, 24
 
 
-def send_resize(ws: websocket.WebSocket, cols: int, rows: int) -> None:
-    payload = json.dumps({"width": cols, "height": rows}).encode()
-    ws.send_binary(bytes([CH_RESIZE]) + payload)
+async def pump_stdin(shell, stop: asyncio.Event) -> None:
+    """Forward local stdin bytes to the remote shell until ``stop`` is set.
 
+    Reads the raw tty fd via the event loop so keystrokes (including Ctrl+C,
+    arrow keys, pastes) stream straight through to the PTY.
+    """
+    loop = asyncio.get_running_loop()
+    in_fd = sys.stdin.fileno()
+    queue: asyncio.Queue[bytes] = asyncio.Queue()
 
-def reader_thread(ws: websocket.WebSocket, stop: threading.Event, exit_status: dict) -> None:
+    def on_readable() -> None:
+        try:
+            chunk = os.read(in_fd, 4096)
+        except OSError:
+            chunk = b""
+        queue.put_nowait(chunk)
+
+    loop.add_reader(in_fd, on_readable)
     try:
         while not stop.is_set():
-            try:
-                opcode, data = ws.recv_data()
-            except websocket.WebSocketConnectionClosedException:
+            chunk = await queue.get()
+            if not chunk:
                 break
-            except websocket.WebSocketTimeoutException:
-                continue
-
-            if opcode == 0x8:  # CLOSE control
-                break
-            if opcode != 0x2 or not data:
-                continue
-
-            channel = data[0]
-            payload = data[1:]
-            if channel == CH_STDOUT:
-                os.write(sys.stdout.fileno(), payload)
-            elif channel == CH_STDERR:
-                os.write(sys.stderr.fileno(), payload)
-            elif channel == CH_STATUS:
-                try:
-                    st = json.loads(payload.decode("utf-8", "replace"))
-                except json.JSONDecodeError:
-                    st = {"raw": payload.decode("utf-8", "replace")}
-                meta = st.get("metadata") or {}
-                exit_status["status"] = st
-                if st.get("status") == "Failure" or "code" in st or "exitCode" in meta:
-                    break
-            elif channel == CH_CLOSE:
-                break
+            await shell.send_bytes(chunk)
     finally:
+        loop.remove_reader(in_fd)
         stop.set()
 
 
-def run_shell(ws_url: str, headers: list[str]) -> int:
-    ws = websocket.create_connection(ws_url, header=headers, timeout=60)
-    ws.settimeout(0.5)
-
-    cols, rows = get_term_size()
-    send_resize(ws, cols, rows)
+async def run_shell(
+    runtime_arn: str,
+    region: str,
+    runtime_session_id: str,
+    shell_id: str | None,
+    qualifier: str,
+) -> int:
+    client = AgentCoreRuntimeClient(region=region, session=boto3.Session(region_name=region))
+    reconnect = ReconnectConfig(max_retries=5, base_delay=0.5)
 
     in_fd = sys.stdin.fileno()
     is_tty = os.isatty(in_fd)
     old_attrs = termios.tcgetattr(in_fd) if is_tty else None
-    if is_tty:
-        tty.setraw(in_fd)
 
-    stop = threading.Event()
-    exit_status: dict = {}
+    async with client.open_shell(
+        runtime_arn,
+        session_id=runtime_session_id,
+        shell_id=shell_id,
+        endpoint_name=qualifier,
+        reconnect_config=reconnect,
+    ) as shell:
+        sys.stderr.write(f"[shellId] {shell.shell_id}\n")
+        sys.stderr.write(f"[reconnected] {shell.reconnected}\n")
+        sys.stderr.write("[connected] type `exit` to end the shell\n")
 
-    def handle_winch(_signum, _frame):
+        # Raw-mode the local tty so keystrokes pass through unbuffered, and
+        # mirror the local window size to the remote PTY now + on SIGWINCH.
+        if is_tty:
+            tty.setraw(in_fd)
+        cols, rows = get_term_size()
+        await shell.resize(cols, rows)
+
+        loop = asyncio.get_running_loop()
+        if is_tty:
+
+            def on_winch() -> None:
+                c, r = get_term_size()
+                loop.create_task(shell.resize(c, r))
+
+            loop.add_signal_handler(signal.SIGWINCH, on_winch)
+
+        stop = asyncio.Event()
+        stdin_task = asyncio.create_task(pump_stdin(shell, stop))
+
+        # The SDK iterator surfaces only STDOUT/STDERR/STATUS frames: it
+        # swallows HEARTBEAT, auto-reconnects on transient drops, parses the
+        # exit code into shell.exit_code, and raises StopAsyncIteration when
+        # the shell exits (CLOSE / terminal STATUS). So we just render output
+        # and read shell.exit_code after the loop.
         try:
-            c, r = get_term_size()
-            send_resize(ws, c, r)
-        except Exception:
-            pass
-
-    prev_winch = signal.signal(signal.SIGWINCH, handle_winch) if is_tty else None
-    reader = threading.Thread(target=reader_thread, args=(ws, stop, exit_status), daemon=True)
-    reader.start()
-
-    try:
-        while not stop.is_set():
-            r, _, _ = select.select([in_fd], [], [], 0.1)
-            if in_fd in r:
+            async for frame in shell:
+                if frame.channel == ShellChannel.STDOUT:
+                    os.write(sys.stdout.fileno(), frame.payload)
+                elif frame.channel == ShellChannel.STDERR:
+                    os.write(sys.stderr.fileno(), frame.payload)
+        finally:
+            stop.set()
+            stdin_task.cancel()
+            if is_tty:
                 try:
-                    chunk = os.read(in_fd, 4096)
-                except OSError:
-                    break
-                if not chunk:
-                    break
-                try:
-                    ws.send_binary(bytes([CH_STDIN]) + chunk)
-                except websocket.WebSocketConnectionClosedException:
-                    break
-    finally:
-        stop.set()
-        if is_tty and old_attrs is not None:
-            termios.tcsetattr(in_fd, termios.TCSADRAIN, old_attrs)
-        if prev_winch is not None:
-            signal.signal(signal.SIGWINCH, prev_winch)
-        try:
-            ws.send_binary(bytes([CH_CLOSE]))
-        except Exception:
-            pass
-        try:
-            ws.close()
-        except Exception:
-            pass
-        reader.join(timeout=1.0)
+                    loop.remove_signal_handler(signal.SIGWINCH)
+                except (ValueError, NotImplementedError):
+                    pass
+                if old_attrs is not None:
+                    termios.tcsetattr(in_fd, termios.TCSADRAIN, old_attrs)
 
-    if exit_status.get("status"):
-        st = exit_status["status"]
-        sys.stderr.write(f"\n[exit] {json.dumps(st)}\n")
-        return int(st.get("code") or 0) if st.get("status") == "Failure" else 0
-    return 0
+        if shell.kicked:
+            sys.stderr.write("\n[kicked] another client attached to this shell_id\n")
+        return shell.exit_code or 0
 
 
 def main() -> int:
@@ -216,9 +169,9 @@ def main() -> int:
     p.add_argument("--region", default=os.environ.get("AGENTCORE_REGION", DEFAULT_REGION))
     p.add_argument("--qualifier", default="DEFAULT")
     p.add_argument(
-        "--command-session-id",
+        "--shell-id",
         default=None,
-        help="reuse to reconnect to an existing PTY",
+        help="reuse with the same --runtime-session-id to reconnect to an existing PTY",
     )
     args = p.parse_args()
 
@@ -226,39 +179,29 @@ def main() -> int:
         print("--agent-arn or AGENTCORE_RUNTIME_ARN required", file=sys.stderr)
         return 2
 
+    # AgentCore runtimeSessionId must be >= 33 chars; pad if the Anthropic id
+    # is shorter (matches tui_exec.py).
     rsid = args.runtime_session_id
     if len(rsid) < 33:
         rsid = rsid + "-" + "0" * (33 - len(rsid) - 1)
 
-    csid = args.command_session_id or str(uuid.uuid4())
-
-    ws_url, headers = sign_ws_url(
-        endpoint=default_endpoint(args.region),
-        agent_arn=args.agent_arn,
-        region=args.region,
-        runtime_session_id=rsid,
-        command_session_id=csid,
-        qualifier=args.qualifier,
-    )
-
     sys.stderr.write(f"[runtimeSessionId] {rsid}\n")
-    sys.stderr.write(f"[commandSessionId] {csid}\n")
     sys.stderr.write("[connecting...]\n")
 
     try:
-        return run_shell(ws_url, headers)
-    except websocket.WebSocketBadStatusException as e:
-        sys.stderr.write(f"[upgrade failed] HTTP {e.status_code}\n")
-        rid = None
-        if getattr(e, "resp_headers", None):
-            rid = e.resp_headers.get("x-amz-request-id") or e.resp_headers.get("X-Amz-Request-Id")
-        if rid:
-            sys.stderr.write(f"[request-id] {rid}\n")
-        if getattr(e, "resp_body", None):
-            sys.stderr.write(f"[body] {e.resp_body!r}\n")
-        return 2
-    except Exception as e:
-        sys.stderr.write(f"[error] {type(e).__name__}: {e}\n")
+        return asyncio.run(
+            run_shell(
+                runtime_arn=args.agent_arn,
+                region=args.region,
+                runtime_session_id=rsid,
+                shell_id=args.shell_id,
+                qualifier=args.qualifier,
+            )
+        )
+    except KeyboardInterrupt:
+        return 130
+    except Exception as e:  # noqa: BLE001 - surface a clean operator error
+        sys.stderr.write(f"\n[error] {type(e).__name__}: {e}\n")
         return 2
 
 
